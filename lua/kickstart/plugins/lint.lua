@@ -11,6 +11,13 @@ return {
       markdown = { 'markdownlint' }, -- Make sure to install `markdownlint` via mason / npm
     }
 
+    -- Use global markdownlint config to relax overly strict rules
+    lint.linters.markdownlint.args = {
+      '--config',
+      vim.fn.expand '~/.markdownlint.jsonc',
+      '--stdin',
+    }
+
     -- To allow other plugins to add linters to require('lint').linters_by_ft,
     -- instead set linters_by_ft like this:
     -- lint.linters_by_ft = lint.linters_by_ft or {}
