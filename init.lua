@@ -189,7 +189,15 @@ vim.diagnostic.config {
   virtual_lines = false, -- Text shows up underneath the line, with virtual lines
 
   -- Auto open the float, so you can easily read the errors when jumping with `[d` and `]d`
-  jump = { float = true },
+  jump = {
+    on_jump = function(_, bufnr)
+      vim.diagnostic.open_float {
+        bufnr = bufnr,
+        scope = 'cursor',
+        focus = false,
+      }
+    end,
+  },
 }
 
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
@@ -493,7 +501,12 @@ require('lazy').setup({
         opts = {},
       },
       -- Maps LSP server names between nvim-lspconfig and Mason package names.
-      'mason-org/mason-lspconfig.nvim',
+      {
+        'mason-org/mason-lspconfig.nvim',
+        opts = {
+          automatic_enable = false, -- Change this to true if you want to automatically enable servers that are installed manually (e.g. via :Mason / :MasonInstall)
+        },
+      },
       'WhoIsSethDaniel/mason-tool-installer.nvim',
 
       -- Useful status updates for LSP.
@@ -621,7 +634,8 @@ require('lazy').setup({
               if path ~= vim.fn.stdpath 'config' and (vim.uv.fs_stat(path .. '/.luarc.json') or vim.uv.fs_stat(path .. '/.luarc.jsonc')) then return end
             end
 
-            client.config.settings.Lua = vim.tbl_deep_extend('force', client.config.settings.Lua, {
+            local current_settings = client.config.settings --[[@as lspconfig.settings.lua_ls]]
+            client.config.settings.Lua = vim.tbl_deep_extend('force', current_settings.Lua, {
               runtime = {
                 version = 'LuaJIT',
                 path = { 'lua/?.lua', 'lua/?/init.lua' },
@@ -630,10 +644,7 @@ require('lazy').setup({
                 checkThirdParty = false,
                 -- NOTE: this is a lot slower and will cause issues when working on your own configuration.
                 --  See https://github.com/neovim/nvim-lspconfig/issues/3189
-                library = vim.tbl_extend('force', vim.api.nvim_get_runtime_file('', true), {
-                  '${3rd}/luv/library',
-                  '${3rd}/busted/library',
-                }),
+                library = vim.api.nvim_get_runtime_file('', true),
               },
             })
           end,
@@ -894,6 +905,9 @@ require('lazy').setup({
       ---@param buf integer
       ---@param language string
       local function treesitter_try_attach(buf, language)
+        -- check if the buffer is valid (might not be after install completes)
+        if not vim.api.nvim_buf_is_valid(buf) then return end
+
         -- check if parser exists and load it
         if not vim.treesitter.language.add(language) then return end
         -- enables syntax highlighting and other treesitter features
